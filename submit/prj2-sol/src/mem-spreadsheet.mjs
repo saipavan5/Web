@@ -12,7 +12,7 @@ import { cellRefToCellId } from './util.mjs';
  *  `CIRCULAR_REF` for a circular reference.
  */
 
-// names of private (not to be used outside this class) methods/properties 
+// names of private (not to be used outside this class) methods/properties
 // start with an '_'.
 export default class MemSpreadsheet {
 
@@ -20,11 +20,11 @@ export default class MemSpreadsheet {
     this._cells = {};  //map from cellIds to CellInfo objects
     this._undos = {};  //map from cellIds to previous this._cells[cellId]
   }
-  
+
   /** Set cell with id baseCellId to result of evaluating string
    *  formula.  Update all cells which are directly or indirectly
    *  dependent on the base cell.  Return an object mapping the id's
-   *  of all dependent cells to their updated values.  
+   *  of all dependent cells to their updated values.
    */
   eval(baseCellId, formula) {
     try {
@@ -43,23 +43,49 @@ export default class MemSpreadsheet {
     }
   }
 
-  /** return object containing formula and value for cell cellId 
+  copy_eval(baseCellId, formula) {
+    try {
+      this._undos = {};
+      const cellId = cellRefToCellId(baseCellId);
+      const oldAst = this._cells[cellId]?.ast;
+      const ast = parse(formula, cellId);
+      const cell = this._updateCell(cellId, cell => cell.ast = ast);
+      if (oldAst) this._removeAsDependent(cellId, oldAst);
+      const updates = this._evalCell(cell, new Set());
+      return updates;
+    }
+    catch (err) {
+      this.undo();
+      throw err;
+    }
+  }
+
+  /** return object containing formula and value for cell cellId
    *  return { value: 0, formula: '' } for an empty cell.
    */
   query(cellId) {
     //@TODO
-    return { };
+    if(cellId in this._cells)
+    {
+      return { 'formula':this._cells[cellId].formula,'value':this._cells[cellId].value};
+    }
+    else {
+      return { 'formula':'','value':0};
+    }
+
+
   }
 
   /** Clear contents of this spreadsheet. No undo information recorded. */
   clear() {
     this._undos = {};
+    this._cells={};
     //@TODO
   }
 
   /** Delete all info for cellId from this spreadsheet. Return an
    *  object mapping the id's of all dependent cells to their updated
-   *  values.  
+   *  values.
    */
   delete(cellId) {
     this._undos = {};
@@ -77,7 +103,12 @@ export default class MemSpreadsheet {
     this._undos = {};
     const results = {};
     //@TODO
+    const srcAst = this._cells[srcCellId].ast;
+    const destFormula = srcAst.toString(destCellId);
+    const temp= this.copy_eval(destCellId,destFormula);
+    Object.assign(results,temp);
     return results;
+
   }
 
   /** Return dump of cell values as list of cellId and formula pairs.
@@ -86,11 +117,11 @@ export default class MemSpreadsheet {
    *  Returned list must be sorted by cellId with primary order being
    *  topological (cell A < cell B when B depends on A) and secondary
    *  order being lexicographical (when cells have no dependency
-   *  relation). 
+   *  relation).
    *
    *  Specifically, the cells must be dumped in a non-decreasing depth
    *  order:
-   *     
+   *
    *    + The depth of a cell with no dependencies is 0.
    *
    *    + The depth of a cell C with direct prerequisite cells
@@ -112,10 +143,10 @@ export default class MemSpreadsheet {
   undo() {
     for (const [k, v] of Object.entries(this._undos)) {
       if (v) {
-	this._cells[k] = v;
+        this._cells[k] = v;
       }
       else {
-	delete this._cells[k];
+        delete this._cells[k];
       }
     }
   }
@@ -125,11 +156,11 @@ export default class MemSpreadsheet {
    */
   _makePrereqs() {
     const prereqCells =
-       Object.values(this._cells).filter(cell => !cell.isEmpty());
+        Object.values(this._cells).filter(cell => !cell.isEmpty());
     const prereqs = Object.fromEntries(prereqCells.map(c => [c.id, []]));
     for (const cell of prereqCells) {
       for (const d of cell.dependents) {
-	if (prereqs[d]) prereqs[d].push(cell.id);
+        if (prereqs[d]) prereqs[d].push(cell.id);
       }
     }
     return prereqs;
@@ -142,7 +173,7 @@ export default class MemSpreadsheet {
       this._undos[cellId] = this._cells[cellId]?.copy();
     }
     const cell =
-      this._cells[cellId] ?? (this._cells[cellId] = new CellInfo(cellId));
+        this._cells[cellId] ?? (this._cells[cellId] = new CellInfo(cellId));
     updateFn(cell);
     return cell;
   }
@@ -156,8 +187,8 @@ export default class MemSpreadsheet {
     working.add(cell.id);
     for (const dependent of cell.dependents) {
       if (working.has(dependent)) {
-	const msg = `circular ref involving ${dependent}`;
-	throw new AppError('CIRCULAR_REF', msg);
+        const msg = `circular ref involving ${dependent}`;
+        throw new AppError('CIRCULAR_REF', msg);
       }
       const depCell = this._cells[dependent];
       Object.assign(vals, this._evalCell(depCell, working));
@@ -176,7 +207,7 @@ export default class MemSpreadsheet {
     else if (ast.type === 'ref') {
       const cellId = cellRefToCellId(ast.toString(baseCellId));
       const cell =
-	this._updateCell(cellId, cell => cell.dependents.add(baseCellId));
+          this._updateCell(cellId, cell => cell.dependents.add(baseCellId));
       return cell.value;
     }
     else {
@@ -208,7 +239,7 @@ class CellInfo {
     this.ast = null;
     this.dependents = new Set(); //cell-ids of cells which depend on this
     //equivalently, this cell is a prerequisite for all cells in dependents
-    
+
   }
 
   //formula computed on the fly from the ast
@@ -216,12 +247,12 @@ class CellInfo {
 
   //empty if no ast (equivalently, the formula is '').
   isEmpty() { return !this.ast; }
-  
+
   copy() {
     const v = new CellInfo(this.id);
     Object.assign(v, this);
     v.dependents = new Set(v.dependents);
-    return v;   
+    return v;
   }
 
 }

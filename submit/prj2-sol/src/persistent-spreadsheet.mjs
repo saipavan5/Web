@@ -21,21 +21,26 @@ const MONGO_CONNECT_OPTIONS = { useUnifiedTopology: true };
  *  `DB`: database error.
  */
 
-export default class PersistentSpreadsheet {
+export default class PersistentSpreadsheet extends MemSpreadsheet{
 
   //factory method
   static async make(dbUrl, spreadsheetName) {
     try {
+      var client = await mongo.connect(dbUrl,MONGO_CONNECT_OPTIONS);
+      var db2= client.db();
+      var id=db2.collection(spreadsheetName);
       //@TODO set up database info, including reading data
     }
     catch (err) {
       const msg = `cannot connect to URL "${dbUrl}": ${err}`;
       throw new AppError('DB', msg);
     }
-    return new PersistentSpreadsheet(/* @TODO params */);
+    return new PersistentSpreadsheet({client,id});
   }
 
-  constructor(/* @TODO params */) {
+  constructor(props) {
+    super();
+    Object.assign(this, props);
     //@TODO
   }
 
@@ -43,6 +48,13 @@ export default class PersistentSpreadsheet {
    *  Specifically, close any database connections.
    */
   async close() {
+
+    try {
+      await this.client.close();
+    }
+    catch (err) {
+      throw new AppError('DB', err.toString());
+    }
     //@TODO
   }
 
@@ -52,9 +64,12 @@ export default class PersistentSpreadsheet {
    *  of all dependent cells to their updated values.
    */
   async eval(baseCellId, formula) {
-    const results = /* @TODO delegate to in-memory spreadsheet */ {}; 
+    const results = super.eval(baseCellId,formula);/* @TODO delegate to in-memory spreadsheet */
     try {
       //@TODO
+      let ins=Object.assign({},results);
+      await this.id.insertOne(ins);
+
     }
     catch (err) {
       //@TODO undo mem-spreadsheet operation
@@ -64,32 +79,35 @@ export default class PersistentSpreadsheet {
     return results;
   }
 
-  /** return object containing formula and value for cell cellId 
+  /** return object containing formula and value for cell cellId
    *  return { value: 0, formula: '' } for an empty cell.
    */
   async query(cellId) {
-    return /* @TODO delegate to in-memory spreadsheet */ {}; 
+    return super.query(cellId);/* @TODO delegate to in-memory spreadsheet */ {};
   }
 
   /** Clear contents of this spreadsheet */
   async clear() {
     try {
       //@TODO
+      await this.id.deleteMany({});
     }
     catch (err) {
       const msg = `cannot drop collection ${this.spreadsheetName}: ${err}`;
       throw new AppError('DB', msg);
     }
     /* @TODO delegate to in-memory spreadsheet */
+    super.clear();
   }
+
 
   /** Delete all info for cellId from this spreadsheet. Return an
    *  object mapping the id's of all dependent cells to their updated
-   *  values.  
+   *  values.
    */
   async delete(cellId) {
     let results;
-    results = /* @TODO delegate to in-memory spreadsheet */ {}; 
+    results = /* @TODO delegate to in-memory spreadsheet */ {};
     try {
       //@TODO
     }
@@ -100,30 +118,38 @@ export default class PersistentSpreadsheet {
     }
     return results;
   }
-  
+
   /** copy formula from srcCellId to destCellId, adjusting any
    *  relative cell references suitably.  Return an object mapping the
    *  id's of all dependent cells to their updated values. Copying
    *  an empty cell is equivalent to deleting the destination cell.
    */
   async copy(destCellId, srcCellId) {
-    const srcFormula = /* @TODO get formula by querying mem-spreadsheet */ '';
+    const srcFormula =  super.query(srcCellId)['formula'];//super.query(srcCellId)/* @TODO get formula by querying mem-spreadsheet */ ;
     if (!srcFormula) {
-      return await this.delete(destCellId);
+      //return await this.delete(destCellId);
     }
     else {
-      const results = /* @TODO delegate to in-memory spreadsheet */ {}; 
+      const results = {};
+      Object.assign(results,super.copy(destCellId, srcCellId));/* @TODO delegate to in-memory spreadsheet */
       try {
-	//@TODO
+        //@TODO
+        let ins=Object.assign({},results);
+
+        for(let temp in ins){
+          await this.id.insertOne({temp:ins[temp]});
+        }
+
       }
       catch (err) {
-	//@TODO undo mem-spreadsheet operation
-	const msg = `cannot update "${destCellId}: ${err}`;
-	throw new AppError('DB', msg);
+        //@TODO undo mem-spreadsheet operation
+        const msg = `cannot update "${destCellId}: ${err}`;
+        throw new AppError('DB', msg);
       }
       return results;
     }
   }
+
 
   /** Return dump of cell values as list of cellId and formula pairs.
    *  Do not include any cell's with empty formula.
@@ -131,11 +157,11 @@ export default class PersistentSpreadsheet {
    *  Returned list must be sorted by cellId with primary order being
    *  topological (cell A < cell B when B depends on A) and secondary
    *  order being lexicographical (when cells have no dependency
-   *  relation). 
+   *  relation).
    *
    *  Specifically, the cells must be dumped in a non-decreasing depth
    *  order:
-   *     
+   *
    *    + The depth of a cell with no dependencies is 0.
    *
    *    + The depth of a cell C with direct prerequisite cells
@@ -148,7 +174,7 @@ export default class PersistentSpreadsheet {
    *  sort.
    */
   async dump() {
-    return /* @TODO delegate to in-memory spreadsheet */ []; 
+    return /* @TODO delegate to in-memory spreadsheet */ [];
   }
 
 }
