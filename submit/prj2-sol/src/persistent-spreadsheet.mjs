@@ -28,7 +28,7 @@ export default class PersistentSpreadsheet extends MemSpreadsheet{
     try {
       var client = await mongo.connect(dbUrl,MONGO_CONNECT_OPTIONS);
       var db2= client.db();
-      var id=db2.collection(spreadsheetName);
+     var id=db2.collection(spreadsheetName);
       //@TODO set up database info, including reading data
     }
     catch (err) {
@@ -50,7 +50,7 @@ export default class PersistentSpreadsheet extends MemSpreadsheet{
   async close() {
 
     try {
-      await this.client.close();
+     await this.client.close();
     }
     catch (err) {
       throw new AppError('DB', err.toString());
@@ -67,8 +67,8 @@ export default class PersistentSpreadsheet extends MemSpreadsheet{
     const results = super.eval(baseCellId,formula);/* @TODO delegate to in-memory spreadsheet */
     try {
       //@TODO
-      let ins=Object.assign({},results);
-      await this.id.insertOne(ins);
+        let ins=Object.assign({},results);
+        await this.id.insertOne(ins);
 
     }
     catch (err) {
@@ -107,7 +107,7 @@ export default class PersistentSpreadsheet extends MemSpreadsheet{
    */
   async delete(cellId) {
     let results;
-    results = /* @TODO delegate to in-memory spreadsheet */ {};
+    results = super.delete(cellId);/* @TODO delegate to in-memory spreadsheet */
     try {
       //@TODO
     }
@@ -124,31 +124,31 @@ export default class PersistentSpreadsheet extends MemSpreadsheet{
    *  id's of all dependent cells to their updated values. Copying
    *  an empty cell is equivalent to deleting the destination cell.
    */
-  async copy(destCellId, srcCellId) {
-    const srcFormula =  super.query(srcCellId)['formula'];//super.query(srcCellId)/* @TODO get formula by querying mem-spreadsheet */ ;
-    if (!srcFormula) {
-      //return await this.delete(destCellId);
+   async copy(destCellId, srcCellId) {
+     const srcFormula =  super.query(srcCellId)['formula'];//super.query(srcCellId)/* @TODO get formula by querying mem-spreadsheet */ ;
+     if (!srcFormula) {
+       return super.copy(destCellId, srcCellId);
     }
-    else {
-      const results = {};
-      Object.assign(results,super.copy(destCellId, srcCellId));/* @TODO delegate to in-memory spreadsheet */
-      try {
-        //@TODO
-        let ins=Object.assign({},results);
+     else {
+       const results = {};
+       Object.assign(results,super.copy(destCellId, srcCellId));/* @TODO delegate to in-memory spreadsheet */
+       try {
+ 	//@TODO
+          let ins=Object.assign({},results);
 
-        for(let temp in ins){
-          await this.id.insertOne({temp:ins[temp]});
-        }
+         for(let temp in ins){
+            await this.id.insertOne({temp:ins[temp]});
+          }
 
-      }
-      catch (err) {
-        //@TODO undo mem-spreadsheet operation
-        const msg = `cannot update "${destCellId}: ${err}`;
-        throw new AppError('DB', msg);
-      }
-      return results;
-    }
-  }
+       }
+       catch (err) {
+ 	//@TODO undo mem-spreadsheet operation
+ 	const msg = `cannot update "${destCellId}: ${err}`;
+ 	throw new AppError('DB', msg);
+       }
+       return results;
+     }
+   }
 
 
   /** Return dump of cell values as list of cellId and formula pairs.
@@ -174,7 +174,7 @@ export default class PersistentSpreadsheet extends MemSpreadsheet{
    *  sort.
    */
   async dump() {
-    return /* @TODO delegate to in-memory spreadsheet */ [];
+    return  super.dump();/* @TODO delegate to in-memory spreadsheet */ ;
   }
 
 }

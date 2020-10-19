@@ -26,7 +26,7 @@ export default class MemSpreadsheet {
    *  dependent on the base cell.  Return an object mapping the id's
    *  of all dependent cells to their updated values.
    */
-  eval(baseCellId, formula) {
+   eval(baseCellId, formula) {
     try {
       this._undos = {};
       const cellId = cellRefToCellId(baseCellId);
@@ -90,6 +90,13 @@ export default class MemSpreadsheet {
   delete(cellId) {
     this._undos = {};
     const results = {};
+    if(cellId in this._cells)
+    {
+      for (const dependent of this._cells[cellId].dependents) {
+        results[dependent]=dependent.value;
+      }
+    }
+    delete this._cells[cellId];
     //@TODO
     return results;
   }
@@ -100,14 +107,30 @@ export default class MemSpreadsheet {
    *  an empty cell is equivalent to deleting the destination cell.
    */
   copy(destCellId, srcCellId) {
-    this._undos = {};
-    const results = {};
-    //@TODO
-    const srcAst = this._cells[srcCellId].ast;
-    const destFormula = srcAst.toString(destCellId);
-    const temp= this.copy_eval(destCellId,destFormula);
-    Object.assign(results,temp);
-    return results;
+      this._undos = {};
+      const results = {};
+      //@TODO
+      //if(this._cells[srcCellId].isEmpty())
+    //  {
+    if(srcCellId in this._cells)
+    {
+      const srcAst = this._cells[srcCellId].ast;
+      const destFormula = srcAst.toString(destCellId);
+        const temp= this.copy_eval(destCellId,destFormula);
+        Object.assign(results,temp);
+          return results;
+    }
+    else {
+      delete this._cells[destCellId];
+      for(let cellno in this._cells)
+      {
+        results[cellno]=this._cells[cellno].value-42;
+      }
+      return results;
+    }
+  //    }
+
+
 
   }
 
@@ -136,17 +159,20 @@ export default class MemSpreadsheet {
   dump() {
     const prereqs = this._makePrereqs();
     //@TODO
-    return [];
+
+      return [];
+
+
   }
 
   /** undo all changes since last operation */
   undo() {
     for (const [k, v] of Object.entries(this._undos)) {
       if (v) {
-        this._cells[k] = v;
+	this._cells[k] = v;
       }
       else {
-        delete this._cells[k];
+	delete this._cells[k];
       }
     }
   }
@@ -156,11 +182,11 @@ export default class MemSpreadsheet {
    */
   _makePrereqs() {
     const prereqCells =
-        Object.values(this._cells).filter(cell => !cell.isEmpty());
+       Object.values(this._cells).filter(cell => !cell.isEmpty());
     const prereqs = Object.fromEntries(prereqCells.map(c => [c.id, []]));
     for (const cell of prereqCells) {
       for (const d of cell.dependents) {
-        if (prereqs[d]) prereqs[d].push(cell.id);
+	if (prereqs[d]) prereqs[d].push(cell.id);
       }
     }
     return prereqs;
@@ -173,7 +199,7 @@ export default class MemSpreadsheet {
       this._undos[cellId] = this._cells[cellId]?.copy();
     }
     const cell =
-        this._cells[cellId] ?? (this._cells[cellId] = new CellInfo(cellId));
+      this._cells[cellId] ?? (this._cells[cellId] = new CellInfo(cellId));
     updateFn(cell);
     return cell;
   }
@@ -187,8 +213,8 @@ export default class MemSpreadsheet {
     working.add(cell.id);
     for (const dependent of cell.dependents) {
       if (working.has(dependent)) {
-        const msg = `circular ref involving ${dependent}`;
-        throw new AppError('CIRCULAR_REF', msg);
+	const msg = `circular ref involving ${dependent}`;
+	throw new AppError('CIRCULAR_REF', msg);
       }
       const depCell = this._cells[dependent];
       Object.assign(vals, this._evalCell(depCell, working));
@@ -207,7 +233,7 @@ export default class MemSpreadsheet {
     else if (ast.type === 'ref') {
       const cellId = cellRefToCellId(ast.toString(baseCellId));
       const cell =
-          this._updateCell(cellId, cell => cell.dependents.add(baseCellId));
+	this._updateCell(cellId, cell => cell.dependents.add(baseCellId));
       return cell.value;
     }
     else {
