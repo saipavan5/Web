@@ -1,25 +1,26 @@
 {
   "name": "prj3-sol",
   "version": "1.0.0",
-  "description": "Name:\t\tXXX B-Number:\tXXX Email:\t\tXXX",
+  "description": "Name:\t\tSai Pavan Kalyan Bommali B-Number:\tB00817715 Email:\t\tsbommal1@binghamton.edu",
   "main": "index.js",
-  "scripts": {
-    "test": "mocha test/",
-    "debug-test": "mocha --inspect-brk test/"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "chai": "^4.2.0",
-    "mocha": "^8.2.0",
-    "nodemon": "^2.0.6"
-  },
   "dependencies": {
     "body-parser": "^1.19.0",
+    "chai": "^4.2.0",
     "cors": "^2.8.5",
     "cs544-ss": "file:../../../cs544/lib/cs544-ss",
     "express": "^4.17.1",
     "mongodb": "^3.6.2"
-  }
+  },
+  "devDependencies": {
+    "install": "^0.13.0",
+    "mocha": "^8.2.0",
+    "nodemon": "^2.0.6",
+    "npm": "^6.14.8"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
